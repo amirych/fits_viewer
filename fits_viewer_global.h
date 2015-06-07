@@ -1,0 +1,12 @@
+#ifndef FITS_VIEWER_GLOBAL_H
+#define FITS_VIEWER_GLOBAL_H
+
+#include <QtCore/qglobal.h>
+
+#if defined(FITS_VIEWER_LIBRARY)
+#  define FITS_VIEWERSHARED_EXPORT Q_DECL_EXPORT
+#else
+#  define FITS_VIEWERSHARED_EXPORT Q_DECL_IMPORT
+#endif
+
+#endif // FITS_VIEWER_GLOBAL_H
