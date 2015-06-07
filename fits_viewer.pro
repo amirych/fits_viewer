@@ -9,6 +9,8 @@ QT       += widgets
 TARGET = fits_viewer
 TEMPLATE = lib
 
+QMAKE_CXXFLAGS += -std=c++11
+
 DEFINES += FITS_VIEWER_LIBRARY
 
 SOURCES += fits_viewer.cpp
@@ -20,3 +22,5 @@ unix {
     target.path = /usr/lib
     INSTALLS += target
 }
+
+unix:!macx|win32: LIBS += -lcfitsio
