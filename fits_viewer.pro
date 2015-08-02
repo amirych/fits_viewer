@@ -24,3 +24,5 @@ unix {
 }
 
 unix:!macx|win32: LIBS += -lcfitsio
+
+unix:!macx|win32: LIBS += -lgsl
