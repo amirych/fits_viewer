@@ -87,6 +87,7 @@ Fits_viewer::Fits_viewer(QWidget *parent): Fits_viewer("", parent)
 
 Fits_viewer::~Fits_viewer()
 {
+    qDebug() << "FITS_VIEWER destructor";
     delete[] currentImage_buffer;
     delete[] currentScaledImage_buffer;
 }
@@ -194,18 +195,23 @@ void Fits_viewer::ScaleImage(const double low_val, const double high_val)
 
     if ( (currentImage_buffer == nullptr) || (currentImage_npix == 0) ) return;
 
+    qDebug() << low_val << " " << high_val << " " << currentImageMinVal << " " << currentImageMaxVal;
+
     if ( low_val >= high_val ) {
-        emit Fits_viewer_error(FITS_VIEWER_ERROR_BAD_SCALE_PARS);
+        currentError = FITS_VIEWER_ERROR_BAD_SCALE_PARS;
+        emit Fits_viewer_error(currentError);
         return;
     }
 
     if ( currentImageMinVal > high_val ) {
-        emit Fits_viewer_error(FITS_VIEWER_ERROR_BAD_SCALE_PARS);
+        currentError = FITS_VIEWER_ERROR_BAD_SCALE_PARS;
+        emit Fits_viewer_error(currentError);
         return;
     }
 
     if ( currentImageMaxVal < low_val ) {
-        emit Fits_viewer_error(FITS_VIEWER_ERROR_BAD_SCALE_PARS);
+        currentError = FITS_VIEWER_ERROR_BAD_SCALE_PARS;
+        emit Fits_viewer_error(currentError);
         return;
     }
 
@@ -370,6 +376,19 @@ void Fits_viewer::wheelEvent(QWheelEvent *event)
 {
     int numDegrees = event->delta() / 8;
     int numSteps = numDegrees / 15; // see QWheelEvent documentation
+
+    qreal factor = 1.0+qreal(numSteps)*0.1;
+    currentScale *= factor;
+    if ( currentScale < 1.0 ) {
+        currentScale = 1.0;
+        this->fitInView(pixmap_item,Qt::KeepAspectRatio);
+        return;
+    }
+//    qDebug() << "scale = " << currentScale;
+    scale(factor,factor);
+
+    return;
+
     _numScheduledScalings += numSteps;
     if (_numScheduledScalings * numSteps < 0) // if user moved the wheel in another direction, we reset previously scheduled scalings
         _numScheduledScalings = numSteps;
@@ -423,8 +442,9 @@ void Fits_viewer::scalingTime(qreal x)
 {
     qreal factor = 1.0+ qreal(_numScheduledScalings) / 300.0;
     currentScale *= factor;
-    if ( currentScale <= 1.0 ) {
+    if ( currentScale < 1.0 ) {
         currentScale = 1.0;
+        this->fitInView(pixmap_item,Qt::KeepAspectRatio);
         return;
     }
     scale(factor, factor);
@@ -627,7 +647,8 @@ void Fits_viewer::Compute_ZScale(double *zmin, double *zmax, const double contra
         gsl_matrix_free(cov);
         gsl_vector_free(cc);
 
-        emit Fits_viewer_error(FITS_VIEWER_ERROR_BAD_ALLOC);
+        currentError = FITS_VIEWER_ERROR_BAD_ALLOC;
+        emit Fits_viewer_error(currentError);
         return;
     }
 
