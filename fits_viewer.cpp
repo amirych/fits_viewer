@@ -18,7 +18,8 @@
 
 Fits_viewer::Fits_viewer(QString fits_filename, QWidget *parent): QGraphicsView(parent),
     currentPixmap(QPixmap()), currentCT(QVector<QRgb>(FITS_VIEWER_CT_LENGTH)), currentCursor(QCursor()),
-    rubberBand_origin(QPoint()), rubberBand_end(QPoint()), rubberBand_pen(QPen("red"))
+    rubberBand_origin(QPoint()), rubberBand_end(QPoint()), rubberBand_pen(QPen("red")),
+    currentFITS_filename(QString(""))
 {
     gsl_set_error_handler_off();
 
@@ -65,7 +66,10 @@ Fits_viewer::Fits_viewer(QString fits_filename, QWidget *parent): QGraphicsView(
 
     this->setMouseTracking(true);
 
-    currentFITS_filename = currentFITS_filename.trimmed();
+    if ( fits_filename.isNull() || fits_filename.isEmpty() ) {
+        return;
+    }
+    currentFITS_filename = fits_filename.trimmed();
     if ( currentFITS_filename.isEmpty() ) return;
     LoadFile(currentFITS_filename);
     isImageLoaded = true;
@@ -87,7 +91,7 @@ Fits_viewer::Fits_viewer(QWidget *parent): Fits_viewer("", parent)
 
 Fits_viewer::~Fits_viewer()
 {
-    qDebug() << "FITS_VIEWER destructor";
+//    qDebug() << "FITS_VIEWER destructor";
     delete[] currentImage_buffer;
     delete[] currentScaledImage_buffer;
 }
