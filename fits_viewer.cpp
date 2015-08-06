@@ -26,7 +26,6 @@ Fits_viewer::Fits_viewer(QString fits_filename, QWidget *parent): QGraphicsView(
     currentError = FITS_VIEWER_ERROR_OK;
 
     isImageLoaded = false;
-    currentFITS_filename = fits_filename;
     currentImage_buffer = nullptr;
     currentImage_npix = 0;
     currentScaledImage_buffer = nullptr;
@@ -34,7 +33,7 @@ Fits_viewer::Fits_viewer(QString fits_filename, QWidget *parent): QGraphicsView(
     _numScheduledScalings = 0;
     currentScale = 1.0;
 
-    QObject::connect(this,SIGNAL(Fits_viewer_error(int)),this,SLOT(SetError(int)));
+//    QObject::connect(this,SIGNAL(Fits_viewer_error(int)),this,SLOT(SetError(int)));
 
     scene = new QGraphicsScene(this);
     setScene(scene);
@@ -71,6 +70,7 @@ Fits_viewer::Fits_viewer(QString fits_filename, QWidget *parent): QGraphicsView(
     }
     currentFITS_filename = fits_filename.trimmed();
     if ( currentFITS_filename.isEmpty() ) return;
+
     LoadFile(currentFITS_filename);
     isImageLoaded = true;
 
@@ -84,14 +84,14 @@ Fits_viewer::Fits_viewer(QString fits_filename, QWidget *parent): QGraphicsView(
     ScaleImage(cl,ch);
 }
 
-Fits_viewer::Fits_viewer(QWidget *parent): Fits_viewer("", parent)
+Fits_viewer::Fits_viewer(QWidget *parent): Fits_viewer(QString(""), parent)
 {
 }
 
 
 Fits_viewer::~Fits_viewer()
 {
-//    qDebug() << "FITS_VIEWER destructor";
+    qDebug() << "FITS_VIEWER destructor";
     delete[] currentImage_buffer;
     delete[] currentScaledImage_buffer;
 }
