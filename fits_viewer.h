@@ -36,11 +36,14 @@ public:
     void GetImageMinMax(double *min_val, double *max_val);
     int getCurrentError() const;
 
+    double* getCurrentSubImage(QRect *rect);
+
 signals:
     void Fits_viewer_error(int err);
     void ImagePoint(QPointF pos, double val);
     void ImagePoint(double xpos, double ypos, double val);
     void SelectedRegion(QRectF region);
+    void DeselectRegion();
     void ScalingIsChanged(double low_cuts, double high_cuts);
 
 public slots:
@@ -73,6 +76,8 @@ private:
     double currentImageMinVal;
     double currentImageMaxVal;
     double currentLowCut,currentHighCut;
+
+    double *currentSubImage;
 
 
     QPixmap currentPixmap;

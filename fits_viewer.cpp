@@ -17,7 +17,7 @@
 
 
 Fits_viewer::Fits_viewer(QString fits_filename, QWidget *parent): QGraphicsView(parent),
-    currentPixmap(QPixmap()), currentCT(QVector<QRgb>(FITS_VIEWER_CT_LENGTH)), currentCursor(QCursor()),
+    currentPixmap(QPixmap(10,10)), currentCT(QVector<QRgb>(FITS_VIEWER_CT_LENGTH)), currentCursor(QCursor()),
     rubberBand_origin(QPoint()), rubberBand_end(QPoint()), rubberBand_pen(QPen("red")),
     currentFITS_filename(QString(""))
 {
@@ -29,6 +29,7 @@ Fits_viewer::Fits_viewer(QString fits_filename, QWidget *parent): QGraphicsView(
     currentImage_buffer = nullptr;
     currentImage_npix = 0;
     currentScaledImage_buffer = nullptr;
+    currentSubImage = nullptr;
 
     _numScheduledScalings = 0;
     currentScale = 1.0;
@@ -60,6 +61,7 @@ Fits_viewer::Fits_viewer(QString fits_filename, QWidget *parent): QGraphicsView(
     this->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     this->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     this->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContentsOnFirstShow);
+
 //    this->setInteractive(false);
 //    this->setMouseTracking(false);
 
@@ -94,6 +96,7 @@ Fits_viewer::~Fits_viewer()
     qDebug() << "FITS_VIEWER destructor";
     delete[] currentImage_buffer;
     delete[] currentScaledImage_buffer;
+    delete[] currentSubImage;
 }
 
 
@@ -118,6 +121,51 @@ void Fits_viewer::GetImageMinMax(double *min_val, double *max_val)
     *max_val = currentImageMaxVal;
 }
 
+double* Fits_viewer::getCurrentSubImage(QRect *rect)
+{
+    if ( currentImage_buffer == nullptr ) return nullptr;
+
+    if ( !isRubberBandShown ) return nullptr;
+
+    QRectF region = rubberBand->rect().normalized();
+
+    int xl,xr,yl,yr;
+
+    xl = qRound(region.x());
+    yl = qRound(region.y());
+
+    xr = qRound(region.x() + region.width() - 1);
+    yr = qRound(region.y() + region.height() - 1);
+
+    long Ncols = (xr-xl+1);
+    long Nrows = (yr-yl+1);
+
+    long nelem = Ncols*Nrows;
+    if ( nelem < 0 ) return nullptr;
+
+//    qDebug() << xl << xr << yl << yr << Ncols << Nrows;
+
+    delete[] currentSubImage;
+
+    try {
+        currentSubImage = new double[nelem];
+        long idx = 0;
+        for ( long y = yl; y <= yr; ++y ) {
+            for ( long x = xl; x <=xr; ++x ) {
+                currentSubImage[idx++] = currentImage_buffer[y*currentImage_dim[0] + x];
+            }
+        }
+        *rect = QRect(xl+1,yl+1,Ncols,Nrows); // "+1" to convert to FITS pixel notation! (starting from [1,1])
+        return currentSubImage;
+    } catch (std::bad_alloc &ex) {
+        currentError = FITS_VIEWER_ERROR_BAD_ALLOC;
+        emit Fits_viewer_error(currentError);
+        currentSubImage = nullptr;
+        return nullptr;
+    }
+}
+
+
         /*    Public slots    */
 
 void Fits_viewer::LoadFile(QString fits_filename)
@@ -136,6 +184,8 @@ void Fits_viewer::LoadFile(QString fits_filename)
     int naxis, bitpix;
     LONGLONG nelem = 1;
 
+    isRubberBandActive = false;
+    isRubberBandShown = false;
 
     char* filename = fits_filename.toLocal8Bit().data();
 
@@ -248,7 +298,8 @@ void Fits_viewer::ScaleImage(const double low_val, const double high_val)
 
         ShowImage();
     } catch (std::bad_alloc &ex) {
-        emit Fits_viewer_error(FITS_VIEWER_ERROR_BAD_ALLOC);
+        currentError = FITS_VIEWER_ERROR_BAD_ALLOC;
+        emit Fits_viewer_error(currentError);
         return;
     }
 
@@ -310,6 +361,7 @@ void Fits_viewer::mousePressEvent(QMouseEvent *event)
         if ( isRubberBandShown ) {
             scene->removeItem(rubberBand);
             isRubberBandShown = false;
+            emit DeselectRegion();
         }
 
         rubberBand_origin = mapToScene(event->pos());
@@ -342,6 +394,7 @@ void Fits_viewer::mousePressEvent(QMouseEvent *event)
             scene->removeItem(rubberBand);
             isRubberBandActive = false;
             isRubberBandShown = false;
+            emit DeselectRegion();
 
             double zmin, zmax;
 
@@ -359,8 +412,11 @@ void Fits_viewer::mouseReleaseEvent(QMouseEvent *event)
     if ( event->button() == Qt::LeftButton ) {
         if ( isRubberBandShown ) {
             isRubberBandActive = false;
-            QRectF rect = rubberBand->rect();
+            QRectF rect = rubberBand->rect().normalized();
 //            std::cout << "SELECT: " << rect.x() << ", " << rect.y() << std::endl;
+            // convert to FITS notation: the first pixel has coordinates [1,1] and integer coordinate is at th center of pixel
+            rect.setX(rect.x()+0.5);
+            rect.setY(rect.y()+0.5);
             emit SelectedRegion(rect);
         }
     }
